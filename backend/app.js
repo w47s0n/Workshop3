@@ -3,16 +3,35 @@ import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
 import { DynamoDBClient, PutItemCommand } from "@aws-sdk/client-dynamodb";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"; 
 
-const REGION = "your-region";
+const REGION = process.env.AWS_REGION || "us-east-1";
 const s3 = new S3Client({ region: REGION });
 const sns = new SNSClient({ region: REGION });
 const dynamoDB = new DynamoDBClient({ region: REGION });
 
-const SNS_TOPIC_ARN = "your-sns-arn";
-const DYNAMODB_TABLE_NAME = "your-table";
-const BUCKET_NAME = "your-bucket";
+const SNS_TOPIC_ARN = process.env.SNS_TOPIC_ARN;
+const DYNAMODB_TABLE_NAME = process.env.DYNAMODB_TABLE_NAME;
+const BUCKET_NAME = process.env.S3_BUCKET_NAME;
+
+// Validate environment variables
+const validateEnv = () => {
+  const missingVars = [];
+  
+  if (!SNS_TOPIC_ARN) missingVars.push('SNS_TOPIC_ARN');
+  if (!DYNAMODB_TABLE_NAME) missingVars.push('DYNAMODB_TABLE_NAME');
+  if (!BUCKET_NAME) missingVars.push('S3_BUCKET_NAME');
+  
+  if (missingVars.length > 0) {
+    const errorMsg = `Missing required environment variables: ${missingVars.join(', ')}`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+};
+
 export const handler = async (event) => {
   try {
+    // Validate environment variables before processing
+    validateEnv();
+    
     const { filename, contentType, email } = JSON.parse(event.body);
 
     // Generate pre-signed URL
